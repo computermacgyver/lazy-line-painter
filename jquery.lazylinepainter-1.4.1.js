@@ -46,7 +46,8 @@
 							'strokeDash'	: null,
 							'onComplete'	: null, 
 							'delay'			: null,
-							'overrideKey'	: null
+							'overrideKey'	: null,
+							'onDraw'		: function(){}//SAH
 						},  options);  
 
 					// Set up path information
@@ -61,7 +62,8 @@
 
 					// Setup dimensions
 					if( o.width  === null ) o.width  = $w;
-					if( o.height === null ) o.height = $h; 
+					if( o.height === null ) o.height = $h;
+					
 
 					// Setup Rapheal 
 					var $s = $this.attr("id"); // Requires Id
@@ -89,11 +91,19 @@
 						'count'             : 1,
 						'complete'          : false,
 						'playhead'          : 0,
-						'setTimeOutHandler' : []
+						'setTimeOutHandler' : [],
+						'onDraw'				: o.onDraw//SAH
 					}); 
 				}
 			});
 
+		},
+		
+		
+		paper : function( ) { 
+				var $this = $(this),
+				d = $this.data( dataKey );  
+				return d.paper;
 		},
 
 
@@ -120,7 +130,7 @@
 						p.attr({ 
 							"stroke" : "none",
 							"stroke-width": d.strokeWidth,
-							"fill-opacity": 0
+							"fill-opacity": 1 //SAH changed 0 to 1
 						});
 
 						var sto = setTimeout(function () {
@@ -130,7 +140,21 @@
 								'pathstr'  : p, 
 								'duration' : val.duration, 
 								'attr'     : applyStyles( d, val ),
+								'onDraw'	   : d.onDraw,//SAH
 								'callback' : function (e) {  
+								
+									//Add fill if  present SAH
+									if (val.fill && val.fill!="none") {
+										
+										//Can't for the life  of me  figure out why this doesn't work! (perhaps paths aren't closed?!)
+										//p.attr( {"fill":val.fill});
+										//p.attr({"fill-opacity":1},2500); 
+										
+										//Work around, draw a filled object ontop
+										var t = d.paper.path(val.path);
+										t.attr({"fill":val.fill,"fill-opacity":0,"stroke":"none"});
+										t.animate({"fill-opacity":1},2500);
+									}
 
 									// remove reference to setTimeOut
 									d.setTimeOutHandler.splice(d.count,1);
@@ -162,7 +186,6 @@
 					setTimeout(init, d.delay);
 			});
 		},
-
 
 		/*
 			ERASE LAZY LINE DATA
@@ -240,7 +263,7 @@
  
 		var styles = {
 			"stroke"		: ( !value.strokeColor ) ? data.strokeColor : value.strokeColor,
-			"fill-opacity"    : 0,
+			//"fill-opacity"    : 0,//SAH
 			"stroke-dasharray": ( !value.strokeDash )	? data.strokeDash : value.strokeDash,
 			"stroke-opacity"  : ( !value.strokeOpacity )? data.strokeOpacity : value.strokeOpacity,
 			"stroke-width"    : ( !value.strokeWidth )	? data.strokeWidth : value.strokeWidth,
@@ -259,7 +282,8 @@
 			pathstr  = settings.pathstr, 
 			duration = settings.duration, 
 			attr     = settings.attr, 
-			callback = settings.callback;
+			callback = settings.callback,
+			onDraw		 = settings.onDraw;//SAH
 
 		var guide_path;
 		
@@ -281,6 +305,15 @@
 				subpathstr = guide_path.getSubpath( 0, this_length );  
 
 			attr.path = subpathstr;
+			
+			//SAH - get last point of subpathstr
+			var points=subpathstr.split(",");
+			var lastPoint={x:points[points.length-2],y:points[points.length-1]};
+			//console.log(subpathstr);
+			//console.log(lastPoint);
+			onDraw(lastPoint);
+			
+			//End SAH
 
 			path.animate( attr, interval_length );
 			if ( elapsed_time >= duration )
@@ -292,6 +325,10 @@
 		}, interval_length );   
 	};
 	
+	/*var movePen=function(pen,point) {//SAH
+		pen.setAttribute("cx",point.x);
+		pen.setAttribute("cy",point.y);
+	};*/
 
 	$.fn.lazylinepainter = function(method){ 
 
